@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="cs">
+<head>
+    <title>RTMP Configuration</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <h2>Nastavení RTMP serveru</h2>
+    {% if result == 'parse_app_failed' %}
+    <div class="alert alert-danger">
+        <p>Nepodařilo se načíst nastavení RTMP aplikace <strong>{{name}}</strong>.</p>
+        <small>Zkontrolujte obsah konfiguračního souboru {{config_file}}.</small>
+    </div>
+    {% elif result == 'apply_fail' %}
+    <div class="alert alert-danger">
+        Nastavení se nepodařilo zavést.
+    </div>
+    {% elif result == 'write_perm_failed' %}
+    <div class="alert alert-danger">
+        Není dosatatečné oprávnění pro zápis do souboru.
+    </div>
+    {% elif result == 'test_fail' %}
+    <div class="alert alert-warning">
+        Test syntaxe neúspěšný. Obnovena záloha konfigurace.
+    </div>
+    {% elif result == 'ok' %}
+    <div class="alert alert-success">
+        Nastavení úspěšně zavedeno.
+    </div>
+    {% endif %}
+
+    {% if show_form %}
+    <div class="card">
+        <div class="card-header">
+            Aplikace <strong>{{name}}</strong>
+        </div>
+        <div class="card-body">
+            <form action="{{name}}" method="post">
+                <div class="form-group">
+                    {{ form.publish_allow.label }}
+                    <div class="row">
+                        <div class="col-sm-10">
+                            {{ form.publish_allow(class='form-control') }}
+                        </div>
+                        <div class="col-sm-2">
+                            <button class="btn btn-secondary btn-sm all-button">odkudkoliv</button>
+                            <button class="btn btn-secondary btn-sm internal-button">tech</button>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="form-group">
+                    {{ form.play_allow.label }}
+                    <div class="row">
+                        <div class="col-sm-10">
+                            {{ form.play_allow(class='form-control') }}
+                        </div>
+                        <div class="col-sm-2">
+                            <button class="btn btn-secondary btn-sm all-button">odkudkoliv</button>
+                            <button class="btn btn-secondary btn-sm internal-button">tech</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                {% for u in form.push %}
+                <fieldset class="rtmp-push">
+                    <legend>Cíl {{loop.index}}</legend>
+                    <button class="btn btn-danger btn-sm rtmp-clean">Smazat</button>
+                    <div class="form-group row">
+                        {{ u.form.url.label(class='col-sm-2 col-form-label') }}
+                        <div class="col-sm-10">
+                            <div class="btn-group btn-group-toggle m-1 rtmp-templates" data-toggle="buttons">
+                                <label class="btn btn-secondary">
+                                    <input type="radio" name="options" id="facebook" autocomplete="off"> Facebook
+                                </label>
+                                <label class="btn btn-secondary">
+                                    <input type="radio" name="options" id="youtube" autocomplete="off"> Youtube
+                                </label>
+                                <label class="btn btn-secondary">
+                                    <input type="radio" name="options" id="custom" autocomplete="off"> Vlastní
+                                </label>
+                            </div>
+                            {{ u.form.url(class='form-control rtmp-url-input') }}
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        {{ u.form.streamkey.label(class='col-sm-2 col-form-label') }}
+                        <div class="col-sm-10">
+                            {{ u.form.streamkey(class='form-control') }}
+                        </div>
+                    </div>
+                    {{ u.form.line }}
+
+                </fieldset>
+                {% endfor %}
+
+
+                <div class="form-group">
+                    {{ form.button(class='btn btn-primary') }}
+                </div>
+
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+<script type="text/javascript">
+    const internalNetwork = '172.20.1.0/24';
+    const rtmp_templates = {
+        'facebook': 'rtmp://127.0.0.1:19350/rtmp',
+        'youtube': 'rtmp://a.rtmp.youtube.com/live2'
+    };
+
+    $('fieldset.rtmp-push').each(function () {
+        let fieldset = $(this);
+        console.log(fieldset);
+        let rtmp_url = fieldset.find('input.rtmp-url-input');
+        let template_selector = fieldset.find('.rtmp-templates');
+        console.log(template_selector);
+        let template = undefined;
+        if (rtmp_url) {
+            for (let key in rtmp_templates) {
+                console.log(key);
+                if (rtmp_url.val().toLowerCase() === rtmp_templates[key]) {
+                    template = key;
+                    template_selector.find('input[type=radio][id=' + key + ']').parent('label').addClass('active');
+                    rtmp_url.prop('readonly', true);
+                    break;
+                }
+            }
+            if (template === undefined) {
+                template_selector.find('input[type=radio][id=custom]').parent('label').addClass('active');
+            }
+        }
+
+    });
+
+    $(".rtmp-templates :input").change(function () {
+        let type = $(this).attr('id');
+        let template = rtmp_templates[type];
+        let url_input = $(this).parent().parent().parent().find('input.rtmp-url-input');
+
+        if (template === undefined) {
+            url_input.prop('readonly', false);
+            url_input.val('');
+        } else {
+            url_input.prop('readonly', true);
+            url_input.val(template);
+        }
+
+    });
+
+    $('.rtmp-clean').click(function (e) {
+        $(this).parent().find('input[type=text]').val('').prop('readonly', false);
+        $(this).parent().find('.rtmp-templates label.active').removeClass('active');
+        e.preventDefault();
+    });
+
+    $('.all-button').click(function (e) {
+        $(this).parent().parent().find('input[type=text]').val('all');
+        e.preventDefault();
+    });
+
+    $('.internal-button').click(function (e) {
+        $(this).parent().parent().find('input[type=text]').val(internalNetwork);
+        e.preventDefault();
+    });
+
+
+</script>
+</body>
+</html>
